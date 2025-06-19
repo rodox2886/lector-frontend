@@ -62,13 +62,21 @@
     <!-- Paso 1: Sube o Captura Fotos del Medidor -->
     <div class="bg-white rounded-xl shadow-md p-4 mb-6">
       <h2 class="text-lg sm:text-xl font-semibold text-purple-700 mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
-      <!-- Se eliminó el atributo 'capture="camera"' para permitir la selección de archivos existentes -->
-      <input type="file" id="fileInput" class="mb-2 block w-full text-sm text-gray-500
-        file:mr-4 file:py-2 file:px-4
-        file:rounded-full file:border-0
-        file:text-sm file:font-semibold
-        file:bg-purple-50 file:text-purple-700
-        hover:file:bg-purple-100" accept="image/*" multiple />
+      
+      <!-- Botones para subir o tomar foto -->
+      <div class="flex flex-col sm:flex-row gap-4 mb-4">
+        <button onclick="document.getElementById('uploadFileInput').click()" class="flex-1 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition duration-300 transform hover:scale-105 text-lg font-medium shadow-md">
+          Subir Imágenes
+        </button>
+        <button onclick="document.getElementById('cameraFileInput').click()" class="flex-1 bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition duration-300 transform hover:scale-105 text-lg font-medium shadow-md">
+          Tomar Imagen
+        </button>
+      </div>
+
+      <!-- Inputs de archivo ocultos -->
+      <input type="file" id="uploadFileInput" class="hidden" accept="image/*" multiple />
+      <input type="file" id="cameraFileInput" class="hidden" accept="image/*" capture="camera" />
+
       <div id="preview" class="mt-4 flex flex-wrap gap-3 justify-center">
         <!-- Las miniaturas de las imágenes se mostrarán aquí -->
       </div>
@@ -98,16 +106,40 @@
   </div>
 
   <script>
-    const fileInput = document.getElementById("fileInput");
+    const uploadFileInput = document.getElementById("uploadFileInput"); // Nuevo input para subir imágenes
+    const cameraFileInput = document.getElementById("cameraFileInput"); // Nuevo input para tomar foto
     const infoBox = document.getElementById("infoBox");
     const preview = document.getElementById("preview");
     const loadingIndicator = document.getElementById("loadingIndicator");
-    const downloadReportBtn = document.getElementById("downloadReportBtn"); // Nuevo botón
+    const downloadReportBtn = document.getElementById("downloadReportBtn");
     let selectedFiles = []; // Array para almacenar múltiples archivos seleccionados
 
-    // Event listener para cuando cambian los archivos seleccionados
-    fileInput.addEventListener("change", () => {
-      selectedFiles = Array.from(fileInput.files); // Convertir FileList a Array
+    // Event listener para el input de subir imágenes
+    uploadFileInput.addEventListener("change", (event) => {
+      // Si ya hay archivos, añadir los nuevos. Si no, iniciar el array.
+      if (selectedFiles.length > 0) {
+        selectedFiles = selectedFiles.concat(Array.from(event.target.files));
+      } else {
+        selectedFiles = Array.from(event.target.files);
+      }
+      updatePreviewAndInfo();
+    });
+
+    // Event listener para el input de tomar foto
+    cameraFileInput.addEventListener("change", (event) => {
+      // Si ya hay archivos, añadir el nuevo. Si no, iniciar el array.
+      if (selectedFiles.length > 0) {
+        selectedFiles = selectedFiles.concat(Array.from(event.target.files));
+      } else {
+        selectedFiles = Array.from(event.target.files);
+      }
+      updatePreviewAndInfo();
+      // Limpiar el valor del input de la cámara para permitir tomar otra foto si se desea
+      event.target.value = '';
+    });
+
+    // Función para actualizar la previsualización y el mensaje de información
+    function updatePreviewAndInfo() {
       preview.innerHTML = ''; // Limpiar previsualizaciones anteriores
       downloadReportBtn.classList.add('hidden'); // Ocultar botón de descarga al seleccionar nuevas imágenes
 
@@ -120,9 +152,23 @@
       // Mostrar previsualizaciones de todas las imágenes
       selectedFiles.forEach(file => {
         const imgURL = URL.createObjectURL(file);
-        preview.innerHTML += `<img src="${imgURL}" class="h-24 w-24 object-cover rounded-md border-2 border-purple-300 shadow-sm" alt="Preview de imagen" />`;
+        preview.innerHTML += `<div class="relative group">
+                                <img src="${imgURL}" class="h-24 w-24 object-cover rounded-md border-2 border-purple-300 shadow-sm" alt="Preview de imagen" />
+                                <button onclick="removeImage(this, '${file.name}')" class="absolute top-0 right-0 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200">X</button>
+                              </div>`;
       });
-    });
+    }
+
+    // Función para eliminar una imagen de la previsualización
+    function removeImage(buttonElement, fileName) {
+      const parentDiv = buttonElement.parentNode;
+      parentDiv.remove(); // Eliminar la vista previa de la imagen
+
+      // Eliminar el archivo del array selectedFiles
+      selectedFiles = selectedFiles.filter(file => file.name !== fileName);
+      updatePreviewAndInfo(); // Actualizar el contador y la interfaz
+    }
+
 
     // Función para subir todas las imágenes seleccionadas
     async function uploadImages() {
@@ -133,7 +179,7 @@
 
       // Mostrar indicador de carga
       loadingIndicator.classList.remove('hidden');
-      downloadReportBtn.classList.add('hidden'); // Asegurarse de que el botón de descarga esté oculto
+      downloadReportBtn.classList.add('hidden');
       infoBox.innerHTML = '<p class="text-gray-500 text-center">Iniciando carga...</p>';
 
       const formData = new FormData();
@@ -155,22 +201,22 @@
         if (data.message) {
           if (typeof data.message === 'object' && data.message !== null) {
             infoBox.innerHTML = formatStructuredReport(data.message);
-            downloadReportBtn.classList.remove('hidden'); // Mostrar botón de descarga si el informe es exitoso
+            downloadReportBtn.classList.remove('hidden');
           } else {
             infoBox.innerHTML = `<p class="text-red-500 font-semibold text-center">Error al generar el informe: ${data.message}</p>`;
-            downloadReportBtn.classList.add('hidden'); // Ocultar botón de descarga en caso de error
+            downloadReportBtn.classList.add('hidden');
           }
         } else if (data.error) {
             infoBox.innerHTML = `<p class="text-red-500 font-semibold text-center">Error: ${data.error}</p>`;
-            downloadReportBtn.classList.add('hidden'); // Ocultar botón de descarga en caso de error
+            downloadReportBtn.classList.add('hidden');
         } else {
           infoBox.innerHTML = '<p class="text-red-500 font-semibold text-center">Error al generar el informe: Mensaje desconocido o estructura de datos inesperada.</p>';
-          downloadReportBtn.classList.add('hidden'); // Ocultar botón de descarga en caso de error
+          downloadReportBtn.classList.add('hidden');
         }
       } catch (err) {
         loadingIndicator.classList.add('hidden');
         infoBox.innerHTML = `<p class="text-red-500 font-semibold text-center">¡Error de red o servidor! ${err.message}</p>`;
-        downloadReportBtn.classList.add('hidden'); // Ocultar botón de descarga en caso de error
+        downloadReportBtn.classList.add('hidden');
       }
     }
 
@@ -298,6 +344,9 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url); // Liberar la URL del objeto
     }
+
+    // Inicializar la previsualización y el mensaje al cargar la página
+    updatePreviewAndInfo();
   </script>
 </body>
 </html>
