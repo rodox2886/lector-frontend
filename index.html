@@ -2,86 +2,112 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lector Gemini</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lector de Medidores Gemini</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-purple-50 text-gray-800 font-sans">
   <div class="max-w-3xl mx-auto p-6">
-    <h1 class="text-3xl font-bold text-purple-700 mb-6">Lector Gemini</h1>
+    <h1 class="text-3xl font-bold text-purple-700 mb-6 text-center">Lector de Medidores Gemini</h1>
 
-    <div class="bg-white shadow-md rounded p-4 mb-6">
-      <h2 class="text-lg font-semibold mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
-      <input id="fileInput" type="file" multiple class="mb-4" />
-      <div id="preview" class="flex flex-wrap gap-2"></div>
+    <!-- Paso 1: Sube o Captura Fotos del Medidor -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+      <h2 class="text-lg font-semibold text-purple-700 mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
+      <!-- Permite la selección de múltiples archivos de imagen -->
+      <input type="file" id="fileInput" class="mb-2" accept="image/*" multiple />
+      <div id="preview" class="mt-2 flex flex-wrap gap-2">
+        <!-- Las miniaturas de las imágenes se mostrarán aquí -->
+      </div>
     </div>
 
-    <div class="bg-white shadow-md rounded p-4 mb-6">
-      <h2 class="text-lg font-semibold mb-2">Paso 2: Generar Informe con Gemini</h2>
-      <button onclick="sendImages()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
-        Generar Informe
-      </button>
+    <!-- Paso 2: Generar Informe con Gemini -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+      <h2 class="text-lg font-semibold text-purple-700 mb-2">Paso 2: Generar Informe con Gemini</h2>
+      <button onclick="uploadImages()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300">Generar Informe</button>
     </div>
 
-    <div class="bg-white shadow-md rounded p-4">
-      <h2 class="text-lg font-semibold mb-4">Informe Generado</h2>
-      <div id="reportContainer"></div>
+    <!-- Resultado e Información -->
+    <div class="bg-white rounded-xl shadow-md p-4">
+      <h2 class="text-lg font-semibold text-purple-700 mb-2">Informe Generado</h2>
+      <!-- Contenedor para mostrar mensajes de estado y el informe -->
+      <div id="infoBox" class="bg-gray-50 p-3 rounded-lg text-sm leading-relaxed whitespace-pre-wrap text-gray-800">Esperando imágenes...</div>
+      <!-- Indicador de carga -->
+      <div id="loadingIndicator" class="hidden mt-4 text-center text-purple-600 font-semibold">
+        Cargando y analizando imágenes, por favor espera...
+      </div>
     </div>
   </div>
 
   <script>
     const fileInput = document.getElementById("fileInput");
+    const infoBox = document.getElementById("infoBox");
     const preview = document.getElementById("preview");
-    const reportContainer = document.getElementById("reportContainer");
+    const loadingIndicator = document.getElementById("loadingIndicator");
+    let selectedFiles = []; // Array para almacenar múltiples archivos seleccionados
 
+    // Event listener para cuando cambian los archivos seleccionados
     fileInput.addEventListener("change", () => {
-      preview.innerHTML = "";
-      for (const file of fileInput.files) {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = document.createElement("img");
-          img.src = e.target.result;
-          img.className = "w-24 h-24 object-cover border rounded";
-          preview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      }
+      selectedFiles = Array.from(fileInput.files); // Convertir FileList a Array
+      preview.innerHTML = ''; // Limpiar previsualizaciones anteriores
+      infoBox.textContent = `Se han cargado ${selectedFiles.length} imagen(es). Lista(s) para enviar.`;
+
+      // Mostrar previsualizaciones de todas las imágenes
+      selectedFiles.forEach(file => {
+        const imgURL = URL.createObjectURL(file);
+        preview.innerHTML += `<img src="${imgURL}" class="h-24 w-24 object-cover rounded-md border-2 border-purple-300 shadow-sm" alt="Preview de imagen" />`;
+      });
     });
 
-    async function sendImages() {
-      reportContainer.innerHTML = "";
-      for (const file of fileInput.files) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const base64 = e.target.result.split(',')[1];
-          const res = await fetch("/api/gemini-report", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image_base64: base64 })
-          });
-
-          const resultBox = document.createElement("div");
-          resultBox.className = "mb-6 p-4 border rounded";
-
-          const title = document.createElement("h3");
-          title.className = "font-bold mb-2 text-purple-600";
-          title.textContent = file.name;
-          resultBox.appendChild(title);
-
-          if (res.ok) {
-            const data = await res.json();
-            resultBox.innerHTML += `
-              <p class="text-sm text-gray-500 mb-1">📷 Tamaño: ${(file.size / 1024).toFixed(1)} KB</p>
-              <pre class="whitespace-pre-wrap text-sm bg-gray-100 p-2 rounded">${data.message}</pre>
-            `;
-          } else {
-            resultBox.innerHTML += `<p class="text-red-600 text-sm">❌ Error al conectar con la API.</p>`;
-          }
-
-          reportContainer.appendChild(resultBox);
-        };
-        reader.readAsDataURL(file);
+    // Función para subir todas las imágenes seleccionadas
+    async function uploadImages() {
+      if (selectedFiles.length === 0) {
+        infoBox.textContent = "Por favor, selecciona al menos una imagen.";
+        return;
       }
+
+      // Mostrar indicador de carga
+      loadingIndicator.classList.remove('hidden');
+      infoBox.textContent = ''; // Limpiar mensaje anterior
+
+      const formData = new FormData();
+      // Anexar cada archivo a FormData con la misma clave 'files'
+      selectedFiles.forEach(file => {
+        formData.append("files", file);
+      });
+
+      try {
+        // Realizar la solicitud POST al backend
+        const res = await fetch("https://lector-yaye.onrender.com/api/gemini-report", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        // Ocultar indicador de carga
+        loadingIndicator.classList.add('hidden');
+
+        // Mostrar el informe o el mensaje de error
+        if (data.message) {
+          infoBox.innerHTML = formatReport(data);
+        } else {
+          infoBox.textContent = "Error al generar el informe: " + (data.error || "Mensaje desconocido.");
+        }
+      } catch (err) {
+        // Ocultar indicador de carga
+        loadingIndicator.classList.add('hidden');
+        infoBox.textContent = "¡Error de red o servidor! " + err.message;
+      }
+    }
+
+    // Función para formatear el informe recibido de Gemini
+    function formatReport(data) {
+      // Reemplazar saltos de línea y formateo de Markdown para una mejor visualización
+      const clean = data.message.replace(/\\n/g, "\n").replace(/\*\*/g, "").replace(/#/g, "");
+      return `📄 Archivos analizados: ${data.filenames.join(', ')}
+📦 Tamaño total: ${data.total_size_kb} KB
+
+${clean}`;
     }
   </script>
 </body>
