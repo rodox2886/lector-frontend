@@ -3,36 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Lector de Medidores Gemini</title>
+  <title>Lector Gemini</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Estilos personalizados para la animación de acordeón */
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .accordion-content.open {
+      /* Aumentado el max-height para evitar texto cortado */
+      max-height: 1000px; /* Suficientemente grande para contener la mayoría de los contenidos */
+      transition: max-height 0.5s ease-in;
+    }
+    .accordion-header {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    .arrow-icon {
+      transition: transform 0.3s ease;
+    }
+    .arrow-icon.rotated {
+      transform: rotate(90deg);
+    }
+    /* Estilo para el contenido interno del acordeón */
+    .accordion-inner-content {
+      /* Aquí se aplican los estilos de padding, color de fondo y borde */
+      padding: 1rem; /* p-4 de Tailwind */
+      background-color: #f9fafb; /* bg-gray-50 de Tailwind */
+      border-left: 4px solid; /* border-l-4 de Tailwind, el color se define en JS */
+      border-bottom-left-radius: 0.5rem; /* rounded-b-lg de Tailwind */
+      border-bottom-right-radius: 0.5rem; /* rounded-b-lg de Tailwind */
+      color: #374151; /* text-gray-700 de Tailwind */
+    }
+  </style>
 </head>
 <body class="bg-purple-50 text-gray-800 font-sans">
-  <div class="max-w-3xl mx-auto p-6">
-    <h1 class="text-3xl font-bold text-purple-700 mb-6 text-center">Lector de Medidores Gemini</h1>
+  <div class="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
+    <h1 class="text-3xl sm:text-4xl font-bold text-purple-700 mb-6 text-center">Lector Gemini</h1>
 
     <!-- Paso 1: Sube o Captura Fotos del Medidor -->
     <div class="bg-white rounded-xl shadow-md p-4 mb-6">
-      <h2 class="text-lg font-semibold text-purple-700 mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
-      <!-- Permite la selección de múltiples archivos de imagen -->
-      <input type="file" id="fileInput" class="mb-2" accept="image/*" multiple />
-      <div id="preview" class="mt-2 flex flex-wrap gap-2">
+      <h2 class="text-lg sm:text-xl font-semibold text-purple-700 mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
+      <input type="file" id="fileInput" class="mb-2 block w-full text-sm text-gray-500
+        file:mr-4 file:py-2 file:px-4
+        file:rounded-full file:border-0
+        file:text-sm file:font-semibold
+        file:bg-purple-50 file:text-purple-700
+        hover:file:bg-purple-100" accept="image/*" multiple />
+      <div id="preview" class="mt-4 flex flex-wrap gap-3 justify-center">
         <!-- Las miniaturas de las imágenes se mostrarán aquí -->
       </div>
     </div>
 
     <!-- Paso 2: Generar Informe con Gemini -->
     <div class="bg-white rounded-xl shadow-md p-4 mb-6">
-      <h2 class="text-lg font-semibold text-purple-700 mb-2">Paso 2: Generar Informe con Gemini</h2>
-      <button onclick="uploadImages()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300">Generar Informe</button>
+      <h2 class="text-lg sm:text-xl font-semibold text-purple-700 mb-2">Paso 2: Generar Informe con Gemini</h2>
+      <button onclick="uploadImages()" class="w-full bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition duration-300 transform hover:scale-105 text-lg font-medium shadow-md">Generar Informe</button>
     </div>
 
     <!-- Resultado e Información -->
     <div class="bg-white rounded-xl shadow-md p-4">
-      <h2 class="text-lg font-semibold text-purple-700 mb-2">Informe Generado</h2>
-      <!-- Contenedor para mostrar mensajes de estado y el informe -->
-      <div id="infoBox" class="bg-gray-50 p-3 rounded-lg text-sm leading-relaxed whitespace-pre-wrap text-gray-800">Esperando imágenes...</div>
+      <h2 class="text-lg sm:text-xl font-semibold text-purple-700 mb-2">Informe Generado</h2>
+      <div id="infoBox" class="bg-gray-50 p-3 rounded-lg text-base leading-relaxed text-gray-800 min-h-[100px]">
+        <p class="text-gray-500 text-center">Esperando imágenes...</p>
+      </div>
       <!-- Indicador de carga -->
-      <div id="loadingIndicator" class="hidden mt-4 text-center text-purple-600 font-semibold">
+      <div id="loadingIndicator" class="hidden mt-4 text-center text-purple-600 font-semibold text-lg animate-pulse">
         Cargando y analizando imágenes, por favor espera...
       </div>
     </div>
@@ -49,7 +90,11 @@
     fileInput.addEventListener("change", () => {
       selectedFiles = Array.from(fileInput.files); // Convertir FileList a Array
       preview.innerHTML = ''; // Limpiar previsualizaciones anteriores
-      infoBox.textContent = `Se han cargado ${selectedFiles.length} imagen(es). Lista(s) para enviar.`;
+      if (selectedFiles.length > 0) {
+        infoBox.innerHTML = `<p class="text-gray-800 text-center">Se han cargado <span class="font-bold">${selectedFiles.length}</span> imagen(es). Lista(s) para enviar.</p>`;
+      } else {
+        infoBox.innerHTML = '<p class="text-gray-500 text-center">Esperando imágenes...</p>';
+      }
 
       // Mostrar previsualizaciones de todas las imágenes
       selectedFiles.forEach(file => {
@@ -61,22 +106,20 @@
     // Función para subir todas las imágenes seleccionadas
     async function uploadImages() {
       if (selectedFiles.length === 0) {
-        infoBox.textContent = "Por favor, selecciona al menos una imagen.";
+        infoBox.innerHTML = '<p class="text-red-500 font-semibold text-center">Por favor, selecciona al menos una imagen antes de generar el informe.</p>';
         return;
       }
 
       // Mostrar indicador de carga
       loadingIndicator.classList.remove('hidden');
-      infoBox.textContent = ''; // Limpiar mensaje anterior
+      infoBox.innerHTML = '<p class="text-gray-500 text-center">Iniciando carga...</p>';
 
       const formData = new FormData();
-      // Anexar cada archivo a FormData con la misma clave 'files'
       selectedFiles.forEach(file => {
         formData.append("files", file);
       });
 
       try {
-        // Realizar la solicitud POST al backend
         const res = await fetch("https://lector-yaye.onrender.com/api/gemini-report", {
           method: "POST",
           body: formData,
@@ -87,112 +130,123 @@
         // Ocultar indicador de carga
         loadingIndicator.classList.add('hidden');
 
-        // Mostrar el informe o el mensaje de error
         if (data.message) {
-          // Si data.message es un objeto (JSON estructurado), formatearlo.
-          // Si es una cadena (posiblemente un error), mostrarla directamente.
           if (typeof data.message === 'object' && data.message !== null) {
-            infoBox.innerHTML = formatStructuredReport(data.message, data.filenames, data.total_size_kb);
+            infoBox.innerHTML = formatStructuredReport(data.message); // No se necesita filenames ni totalSizeKb
           } else {
-            // Esto maneja errores devueltos como una cadena en 'message'
-            infoBox.textContent = "Error al generar el informe: " + data.message;
+            infoBox.innerHTML = `<p class="text-red-500 font-semibold text-center">Error al generar el informe: ${data.message}</p>`;
           }
         } else if (data.error) {
-            infoBox.textContent = "Error: " + data.error;
+            infoBox.innerHTML = `<p class="text-red-500 font-semibold text-center">Error: ${data.error}</p>`;
         } else {
-          infoBox.textContent = "Error al generar el informe: Mensaje desconocido o estructura de datos inesperada.";
+          infoBox.innerHTML = '<p class="text-red-500 font-semibold text-center">Error al generar el informe: Mensaje desconocido o estructura de datos inesperada.</p>';
         }
       } catch (err) {
-        // Ocultar indicador de carga
         loadingIndicator.classList.add('hidden');
-        infoBox.textContent = "¡Error de red o servidor! " + err.message;
+        infoBox.innerHTML = `<p class="text-red-500 font-semibold text-center">¡Error de red o servidor! ${err.message}</p>`;
       }
     }
 
-    // Nueva función para formatear el informe estructurado (JSON)
-    function formatStructuredReport(reportData, filenames, totalSizeKb) {
-      let htmlContent = `
-        <div class="mb-4">
-          <p><span class="font-semibold">📄 Archivos analizados:</span> ${filenames.join(', ')}</p>
-          <p><span class="font-semibold">📦 Tamaño total:</span> ${totalSizeKb} KB</p>
-        </div>
-      `;
+    // Función para formatear el informe estructurado (JSON) en módulos colapsables
+    function formatStructuredReport(reportData) {
+      let htmlContent = ''; // Se eliminó la sección de resumen de archivos y tamaño
+
+      // Helper para crear un módulo colapsable
+      const createAccordionModule = (title, content, bgColor, borderColor, textColor) => {
+        const id = title.replace(/\s+/g, '-').toLowerCase(); // Generar un ID único para cada acordeón
+        return `
+          <div class="mb-2 w-full">
+            <div class="accordion-header flex items-center p-4 rounded-lg shadow-sm ${bgColor} border-l-4 ${borderColor} text-lg font-medium ${textColor}" onclick="toggleAccordion('${id}')">
+              <h3 class="flex-grow">${title}</h3>
+              <svg class="arrow-icon w-6 h-6 transform transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </div>
+            <div id="${id}" class="accordion-content">
+              <div class="accordion-inner-content ${borderColor.replace('border-', 'border-')}"> <!-- Aquí se aplica el color del borde dinámicamente -->
+                ${content}
+              </div>
+            </div>
+          </div>
+        `;
+      };
 
       // Módulo: Tipo de Medidor
       if (reportData.tipoMedidor) {
-        htmlContent += `
-          <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-3 mb-3 rounded-md">
-            <h3 class="font-bold text-blue-700 mb-1">Tipo de Medidor</h3>
-            <p>${reportData.tipoMedidor}</p>
-          </div>
-        `;
+        htmlContent += createAccordionModule(
+          "Tipo de Medidor",
+          `<p>${reportData.tipoMedidor}</p>`,
+          "bg-blue-50", "border-blue-400", "text-blue-700"
+        );
       }
 
       // Módulo: Cantidad de Cables Conectados
       if (reportData.cablesConectados !== undefined) {
-        htmlContent += `
-          <div class="bg-green-50 border-l-4 border-green-400 text-green-800 p-3 mb-3 rounded-md">
-            <h3 class="font-bold text-green-700 mb-1">Cables Conectados</h3>
-            <p>${reportData.cablesConectados}</p>
-          </div>
-        `;
+        htmlContent += createAccordionModule(
+          "Cables Conectados",
+          `<p>${reportData.cablesConectados}</p>`,
+          "bg-green-50", "border-green-400", "text-green-700"
+        );
       }
 
       // Módulo: Estado General Visible
       if (reportData.estadoGeneralVisible) {
-        htmlContent += `
-          <div class="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-3 mb-3 rounded-md">
-            <h3 class="font-bold text-yellow-700 mb-1">Estado General Visible</h3>
-            <p>${reportData.estadoGeneralVisible}</p>
-          </div>
-        `;
+        htmlContent += createAccordionModule(
+          "Estado General Visible",
+          `<p>${reportData.estadoGeneralVisible}</p>`,
+          "bg-yellow-50", "border-yellow-400", "text-yellow-700"
+        );
       }
 
       // Módulo: Anomalías Detectadas
+      let anomaliesContent = "";
       if (reportData.anomaliasDetectadas && reportData.anomaliasDetectadas.length > 0) {
-        htmlContent += `
-          <div class="bg-red-50 border-l-4 border-red-400 text-red-800 p-3 mb-3 rounded-md">
-            <h3 class="font-bold text-red-700 mb-1">Anomalías Detectadas</h3>
-            <ul class="list-disc list-inside">
-              ${reportData.anomaliasDetectadas.map(anomaly => `<li>${anomaly}</li>`).join('')}
-            </ul>
-          </div>
-        `;
-      } else if (reportData.anomaliasDetectadas && reportData.anomaliasDetectadas.length === 0) {
-        htmlContent += `
-          <div class="bg-green-50 border-l-4 border-green-400 text-green-800 p-3 mb-3 rounded-md">
-            <h3 class="font-bold text-green-700 mb-1">Anomalías Detectadas</h3>
-            <p>No se detectaron anomalías visibles.</p>
-          </div>
-        `;
+        anomaliesContent = `<ul class="list-disc list-inside space-y-1">${reportData.anomaliasDetectadas.map(anomaly => `<li>${anomaly}</li>`).join('')}</ul>`;
+        htmlContent += createAccordionModule(
+          "Anomalías Detectadas",
+          anomaliesContent,
+          "bg-red-50", "border-red-400", "text-red-700"
+        );
+      } else {
+        anomaliesContent = "<p>No se detectaron anomalías visibles.</p>";
+        htmlContent += createAccordionModule(
+          "Anomalías Detectadas",
+          anomaliesContent,
+          "bg-green-50", "border-green-400", "text-green-700"
+        );
       }
-
 
       // Módulo: Conclusión General
       if (reportData.conclusionGeneral) {
-        htmlContent += `
-          <div class="bg-purple-50 border-l-4 border-purple-400 text-purple-800 p-3 mb-3 rounded-md">
-            <h3 class="font-bold text-purple-700 mb-1">Conclusión General</h3>
-            <p>${reportData.conclusionGeneral}</p>
-          </div>
-        `;
+        htmlContent += createAccordionModule(
+          "Conclusión General",
+          `<p>${reportData.conclusionGeneral}</p>`,
+          "bg-purple-50", "border-purple-400", "text-purple-700"
+        );
       }
 
       return htmlContent;
     }
 
-    // Función original de formateo (mantenida por si acaso se recibe un mensaje no JSON)
-    // Aunque con los cambios en el backend, data.message siempre debería ser JSON o un error específico.
-    function formatReport(data) {
-      // Esta función ya no debería ser llamada con un objeto JSON como 'message'
-      // Se mantiene para compatibilidad con posibles errores no estructurados.
-      const clean = data.message.replace(/\\n/g, "\n").replace(/\*\*/g, "").replace(/#/g, "");
-      return `📄 Archivos analizados: ${data.filenames.join(', ')}
-📦 Tamaño total: ${data.total_size_kb} KB
+    // Función para manejar el colapsado/expandido de los módulos del acordeón
+    function toggleAccordion(id) {
+      const content = document.getElementById(id);
+      const header = content.previousElementSibling; // El encabezado es el elemento anterior
+      const arrowIcon = header.querySelector('.arrow-icon');
 
-${clean}`;
+      if (content.classList.contains('open')) {
+        content.classList.remove('open');
+        arrowIcon.classList.remove('rotated');
+      } else {
+        // Cierra todos los demás acordeones antes de abrir este
+        document.querySelectorAll('.accordion-content.open').forEach(openContent => {
+          openContent.classList.remove('open');
+          openContent.previousElementSibling.querySelector('.arrow-icon').classList.remove('rotated');
+        });
+        content.classList.add('open');
+        arrowIcon.classList.add('rotated');
+      }
     }
   </script>
 </body>
 </html>
-
