@@ -40,6 +40,19 @@
       border-bottom-right-radius: 0.5rem; /* rounded-b-lg de Tailwind */
       color: #374151; /* text-gray-700 de Tailwind */
     }
+    /* Estilo para los campos editables */
+    [contenteditable="true"] {
+      outline: none; /* Quita el borde de enfoque por defecto */
+      min-height: 1.5em; /* Asegura un tamaño mínimo para el campo */
+      border: 1px dashed #ccc; /* Borde punteado para indicar editabilidad */
+      padding: 0.25rem 0.5rem; /* Espaciado interno */
+      border-radius: 0.25rem; /* Esquinas ligeramente redondeadas */
+      background-color: #ffffff; /* Fondo blanco para edición */
+    }
+    [contenteditable="true"]:focus {
+      border-color: #6d28d9; /* Color del borde al enfocar */
+      box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.2); /* Sombra al enfocar */
+    }
   </style>
 </head>
 <body class="bg-purple-50 text-gray-800 font-sans">
@@ -132,7 +145,7 @@
 
         if (data.message) {
           if (typeof data.message === 'object' && data.message !== null) {
-            infoBox.innerHTML = formatStructuredReport(data.message); // No se necesita filenames ni totalSizeKb
+            infoBox.innerHTML = formatStructuredReport(data.message);
           } else {
             infoBox.innerHTML = `<p class="text-red-500 font-semibold text-center">Error al generar el informe: ${data.message}</p>`;
           }
@@ -149,11 +162,11 @@
 
     // Función para formatear el informe estructurado (JSON) en módulos colapsables
     function formatStructuredReport(reportData) {
-      let htmlContent = ''; // Se eliminó la sección de resumen de archivos y tamaño
+      let htmlContent = '';
 
-      // Helper para crear un módulo colapsable
+      // Helper para crear un módulo colapsable con contenido editable
       const createAccordionModule = (title, content, bgColor, borderColor, textColor) => {
-        const id = title.replace(/\s+/g, '-').toLowerCase(); // Generar un ID único para cada acordeón
+        const id = title.replace(/\s+/g, '-').toLowerCase();
         return `
           <div class="mb-2 w-full">
             <div class="accordion-header flex items-center p-4 rounded-lg shadow-sm ${bgColor} border-l-4 ${borderColor} text-lg font-medium ${textColor}" onclick="toggleAccordion('${id}')">
@@ -163,13 +176,22 @@
               </svg>
             </div>
             <div id="${id}" class="accordion-content">
-              <div class="accordion-inner-content ${borderColor.replace('border-', 'border-')}"> <!-- Aquí se aplica el color del borde dinámicamente -->
-                ${content}
+              <div class="accordion-inner-content ${borderColor.replace('border-', 'border-')}">
+                <div contenteditable="true" class="editable-field">${content}</div>
               </div>
             </div>
           </div>
         `;
       };
+
+      // Nuevo Módulo: Número de Medidor
+      if (reportData.numeroMedidor !== undefined) {
+        htmlContent += createAccordionModule(
+          "Número de Medidor",
+          `<p>${reportData.numeroMedidor || 'No visible'}</p>`, // Mostrar 'No visible' si el campo está vacío
+          "bg-gray-50", "border-gray-400", "text-gray-700"
+        );
+      }
 
       // Módulo: Tipo de Medidor
       if (reportData.tipoMedidor) {
@@ -201,14 +223,15 @@
       // Módulo: Anomalías Detectadas
       let anomaliesContent = "";
       if (reportData.anomaliasDetectadas && reportData.anomaliasDetectadas.length > 0) {
-        anomaliesContent = `<ul class="list-disc list-inside space-y-1">${reportData.anomaliasDetectadas.map(anomaly => `<li>${anomaly}</li>`).join('')}</ul>`;
+        // Para la lista de anomalías, cada ítem será editable individualmente
+        anomaliesContent = `<ul class="list-disc list-inside space-y-1">${reportData.anomaliasDetectadas.map(anomaly => `<li contenteditable="true" class="editable-field">${anomaly}</li>`).join('')}</ul>`;
         htmlContent += createAccordionModule(
           "Anomalías Detectadas",
           anomaliesContent,
           "bg-red-50", "border-red-400", "text-red-700"
         );
       } else {
-        anomaliesContent = "<p>No se detectaron anomalías visibles.</p>";
+        anomaliesContent = `<div contenteditable="true" class="editable-field"><p>No se detectaron anomalías visibles.</p></div>`;
         htmlContent += createAccordionModule(
           "Anomalías Detectadas",
           anomaliesContent,
