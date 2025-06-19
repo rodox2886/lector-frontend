@@ -89,9 +89,18 @@
 
         // Mostrar el informe o el mensaje de error
         if (data.message) {
-          infoBox.innerHTML = formatReport(data);
+          // Si data.message es un objeto (JSON estructurado), formatearlo.
+          // Si es una cadena (posiblemente un error), mostrarla directamente.
+          if (typeof data.message === 'object' && data.message !== null) {
+            infoBox.innerHTML = formatStructuredReport(data.message, data.filenames, data.total_size_kb);
+          } else {
+            // Esto maneja errores devueltos como una cadena en 'message'
+            infoBox.textContent = "Error al generar el informe: " + data.message;
+          }
+        } else if (data.error) {
+            infoBox.textContent = "Error: " + data.error;
         } else {
-          infoBox.textContent = "Error al generar el informe: " + (data.error || "Mensaje desconocido.");
+          infoBox.textContent = "Error al generar el informe: Mensaje desconocido o estructura de datos inesperada.";
         }
       } catch (err) {
         // Ocultar indicador de carga
@@ -100,9 +109,83 @@
       }
     }
 
-    // Función para formatear el informe recibido de Gemini
+    // Nueva función para formatear el informe estructurado (JSON)
+    function formatStructuredReport(reportData, filenames, totalSizeKb) {
+      let htmlContent = `
+        <div class="mb-4">
+          <p><span class="font-semibold">📄 Archivos analizados:</span> ${filenames.join(', ')}</p>
+          <p><span class="font-semibold">📦 Tamaño total:</span> ${totalSizeKb} KB</p>
+        </div>
+      `;
+
+      // Módulo: Tipo de Medidor
+      if (reportData.tipoMedidor) {
+        htmlContent += `
+          <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-3 mb-3 rounded-md">
+            <h3 class="font-bold text-blue-700 mb-1">Tipo de Medidor</h3>
+            <p>${reportData.tipoMedidor}</p>
+          </div>
+        `;
+      }
+
+      // Módulo: Cantidad de Cables Conectados
+      if (reportData.cablesConectados !== undefined) {
+        htmlContent += `
+          <div class="bg-green-50 border-l-4 border-green-400 text-green-800 p-3 mb-3 rounded-md">
+            <h3 class="font-bold text-green-700 mb-1">Cables Conectados</h3>
+            <p>${reportData.cablesConectados}</p>
+          </div>
+        `;
+      }
+
+      // Módulo: Estado General Visible
+      if (reportData.estadoGeneralVisible) {
+        htmlContent += `
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-3 mb-3 rounded-md">
+            <h3 class="font-bold text-yellow-700 mb-1">Estado General Visible</h3>
+            <p>${reportData.estadoGeneralVisible}</p>
+          </div>
+        `;
+      }
+
+      // Módulo: Anomalías Detectadas
+      if (reportData.anomaliasDetectadas && reportData.anomaliasDetectadas.length > 0) {
+        htmlContent += `
+          <div class="bg-red-50 border-l-4 border-red-400 text-red-800 p-3 mb-3 rounded-md">
+            <h3 class="font-bold text-red-700 mb-1">Anomalías Detectadas</h3>
+            <ul class="list-disc list-inside">
+              ${reportData.anomaliasDetectadas.map(anomaly => `<li>${anomaly}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      } else if (reportData.anomaliasDetectadas && reportData.anomaliasDetectadas.length === 0) {
+        htmlContent += `
+          <div class="bg-green-50 border-l-4 border-green-400 text-green-800 p-3 mb-3 rounded-md">
+            <h3 class="font-bold text-green-700 mb-1">Anomalías Detectadas</h3>
+            <p>No se detectaron anomalías visibles.</p>
+          </div>
+        `;
+      }
+
+
+      // Módulo: Conclusión General
+      if (reportData.conclusionGeneral) {
+        htmlContent += `
+          <div class="bg-purple-50 border-l-4 border-purple-400 text-purple-800 p-3 mb-3 rounded-md">
+            <h3 class="font-bold text-purple-700 mb-1">Conclusión General</h3>
+            <p>${reportData.conclusionGeneral}</p>
+          </div>
+        `;
+      }
+
+      return htmlContent;
+    }
+
+    // Función original de formateo (mantenida por si acaso se recibe un mensaje no JSON)
+    // Aunque con los cambios en el backend, data.message siempre debería ser JSON o un error específico.
     function formatReport(data) {
-      // Reemplazar saltos de línea y formateo de Markdown para una mejor visualización
+      // Esta función ya no debería ser llamada con un objeto JSON como 'message'
+      // Se mantiene para compatibilidad con posibles errores no estructurados.
       const clean = data.message.replace(/\\n/g, "\n").replace(/\*\*/g, "").replace(/#/g, "");
       return `📄 Archivos analizados: ${data.filenames.join(', ')}
 📦 Tamaño total: ${data.total_size_kb} KB
@@ -112,3 +195,4 @@ ${clean}`;
   </script>
 </body>
 </html>
+
