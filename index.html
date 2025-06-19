@@ -1,94 +1,119 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lector Gemini</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lector Gemini</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-purple-50 text-gray-800 font-sans">
-    <div class="max-w-3xl mx-auto p-6">
-        <h1 class="text-3xl font-bold text-purple-700 mb-6">Lector Gemini</h1>
+  <div class="max-w-3xl mx-auto p-6">
+    <h1 class="text-3xl font-bold text-purple-700 mb-6">Lector Gemini</h1>
 
-        <div class="bg-white p-4 rounded shadow mb-6">
-            <h2 class="text-xl font-semibold mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
-            <input id="imageInput" type="file" accept="image/*" multiple class="mb-2" />
-            <div id="imagePreview" class="flex flex-wrap gap-2"></div>
-        </div>
-
-        <div class="bg-white p-4 rounded shadow mb-6">
-            <h2 class="text-xl font-semibold mb-2">Paso 2: Generar Informe con Gemini</h2>
-            <button id="generateButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
-                Generar Informe
-            </button>
-        </div>
-
-        <div class="bg-white p-4 rounded shadow">
-            <h2 class="text-xl font-semibold mb-2">Informe Generado</h2>
-            <div id="reportOutput" class="space-y-4 text-sm text-gray-700">
-                <p class="text-gray-400">Aún no se ha generado ningún informe.</p>
-            </div>
-        </div>
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+      <h2 class="text-lg font-semibold mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
+      <input type="file" id="imageInput" multiple accept="image/*" class="mb-2">
+      <div id="preview" class="flex gap-2 flex-wrap"></div>
     </div>
 
-    <script>
-        const imageInput = document.getElementById("imageInput");
-        const imagePreview = document.getElementById("imagePreview");
-        const generateButton = document.getElementById("generateButton");
-        const reportOutput = document.getElementById("reportOutput");
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+      <h2 class="text-lg font-semibold mb-2">Paso 2: Generar Informe con Gemini</h2>
+      <button id="analyzeBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+        Generar Informe
+      </button>
+    </div>
 
-        let images = [];
+    <div id="reportContainer" class="space-y-6"></div>
+  </div>
 
-        imageInput.addEventListener("change", (e) => {
-            imagePreview.innerHTML = "";
-            images = Array.from(e.target.files);
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const preview = document.getElementById('preview');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const reportContainer = document.getElementById('reportContainer');
 
-            images.forEach((file) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const img = document.createElement("img");
-                    img.src = reader.result;
-                    img.className = "h-24 rounded border";
-                    imagePreview.appendChild(img);
-                };
-                reader.readAsDataURL(file);
-            });
-        });
+    let selectedFiles = [];
 
-        generateButton.addEventListener("click", async () => {
-            reportOutput.innerHTML = "";
+    imageInput.addEventListener('change', () => {
+      selectedFiles = Array.from(imageInput.files);
+      preview.innerHTML = '';
+      selectedFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.className = 'w-24 h-24 object-cover border rounded';
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
 
-            for (const file of images) {
-                const formData = new FormData();
-                formData.append("file", file);
+    analyzeBtn.addEventListener('click', async () => {
+      reportContainer.innerHTML = '';
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
 
-                const section = document.createElement("div");
-                section.className = "border-t pt-4";
-                section.innerHTML = `<h3 class="font-bold mb-2 text-purple-600">${file.name}</h3><p class="text-gray-400">Analizando imagen...</p>`;
-                reportOutput.appendChild(section);
+        const reportCard = document.createElement('div');
+        reportCard.className = 'bg-white shadow p-4 rounded';
+        reportCard.innerHTML = `
+          <p class="text-sm text-purple-600 font-medium">${file.name}</p>
+          <p class="text-xs text-gray-500 mb-2">Tamaño: ${(file.size / 1024).toFixed(1)} KB</p>
+          <p class="text-gray-600">Analizando imagen...</p>
+        `;
+        reportContainer.appendChild(reportCard);
 
-                try {
-                    const res = await fetch("/api/gemini-report", {
-                        method: "POST",
-                        body: formData,
-                    });
-                    const data = await res.json();
+        try {
+          const res = await fetch('/api/gemini-report', {
+            method: 'POST',
+            body: formData
+          });
 
-                    if (res.ok) {
-                        const { message } = data;
-                        const formatted = message
-                            .replace(/\n/g, "<br>")
-                            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-                        section.innerHTML += `<div class="mt-2">${formatted}</div>`;
-                    } else {
-                        section.innerHTML += `<p class="text-red-500">Error: ${data.detail || "No se pudo generar el informe."}</p>`;
-                    }
-                } catch (err) {
-                    section.innerHTML += `<p class="text-red-500">Error de conexión con la API.</p>`;
-                }
-            }
-        });
-    </script>
+          if (!res.ok) throw new Error('Error en la solicitud');
+
+          const json = await res.json();
+          const raw = json.message || '';
+
+          const [visuales, anomalias, acciones, resumen] = extraerSecciones(raw);
+
+          reportCard.innerHTML = `
+            <h3 class="font-semibold text-purple-700">${file.name}</h3>
+            <div class="text-sm">
+              <p><strong class="text-gray-700">Tamaño:</strong> ${(file.size / 1024).toFixed(1)} KB</p>
+              <p class="text-gray-800 mt-2 whitespace-pre-line">
+                <span class="block text-purple-600 font-bold mb-1">Observaciones Visuales:</span>
+                ${visuales || 'Sin datos.'}
+                <span class="block text-red-600 font-bold mt-3 mb-1">Anomalías Detectadas:</span>
+                ${anomalias || 'Sin datos.'}
+                <span class="block text-blue-600 font-bold mt-3 mb-1">Acciones Tomadas:</span>
+                ${acciones || 'Sin datos.'}
+                <span class="block text-yellow-700 font-bold mt-3 mb-1">Resumen:</span>
+                ${resumen || 'Sin datos.'}
+              </p>
+            </div>
+          `;
+
+        } catch (err) {
+          reportCard.innerHTML += `<p class="text-red-500">Error de conexión con la API.</p>`;
+        }
+      }
+    });
+
+    function extraerSecciones(texto) {
+      const secciones = ['Observaciones Visuales', 'Anomalías Detectadas', 'Acciones', 'Resumen'];
+      const resultados = [];
+      for (let i = 0; i < secciones.length; i++) {
+        const inicio = texto.indexOf(`**${secciones[i]}**`);
+        const fin = i + 1 < secciones.length ? texto.indexOf(`**${secciones[i + 1]}**`) : texto.length;
+        if (inicio !== -1) {
+          resultados.push(texto.substring(inicio + secciones[i].length + 4, fin).trim());
+        } else {
+          resultados.push('');
+        }
+      }
+      return resultados;
+    }
+  </script>
 </body>
 </html>
