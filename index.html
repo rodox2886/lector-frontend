@@ -1,118 +1,83 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lector Gemini</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lector de Medidores Gemini</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-purple-50 text-gray-800 font-sans">
   <div class="max-w-3xl mx-auto p-6">
-    <h1 class="text-3xl font-bold text-purple-700 mb-6">Lector Gemini</h1>
+    <h1 class="text-3xl font-bold text-purple-700 mb-6">Lector de Medidores Gemini</h1>
 
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
-      <h2 class="text-lg font-semibold mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
-      <input type="file" id="imageInput" multiple accept="image/*" class="mb-2">
-      <div id="preview" class="flex gap-2 flex-wrap"></div>
+    <!-- Paso 1 -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+      <h2 class="text-lg font-semibold text-purple-700 mb-2">Paso 1: Sube o Captura Fotos del Medidor</h2>
+      <input type="file" id="fileInput" class="mb-2" accept="image/*" />
+      <div id="preview" class="mt-2"></div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
-      <h2 class="text-lg font-semibold mb-2">Paso 2: Generar Informe con Gemini</h2>
-      <button id="analyzeBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-        Generar Informe
-      </button>
+    <!-- Paso 2 -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+      <h2 class="text-lg font-semibold text-purple-700 mb-2">Paso 2: Generar Informe con Gemini</h2>
+      <button onclick="uploadImage()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Generar Informe</button>
     </div>
 
-    <div id="reportContainer" class="space-y-6"></div>
+    <!-- Resultado -->
+    <div class="bg-white rounded-xl shadow-md p-4">
+      <h2 class="text-lg font-semibold text-purple-700 mb-2">Informe Generado</h2>
+      <div id="infoBox" class="bg-gray-50 p-3 rounded text-sm leading-relaxed whitespace-pre-wrap text-gray-800">Esperando imagen...</div>
+    </div>
   </div>
 
   <script>
-    const imageInput = document.getElementById('imageInput');
-    const preview = document.getElementById('preview');
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const reportContainer = document.getElementById('reportContainer');
+    const fileInput = document.getElementById("fileInput");
+    const infoBox = document.getElementById("infoBox");
+    const preview = document.getElementById("preview");
+    let selectedFile = null;
 
-    let selectedFiles = [];
-
-    imageInput.addEventListener('change', () => {
-      selectedFiles = Array.from(imageInput.files);
-      preview.innerHTML = '';
-      selectedFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = document.createElement('img');
-          img.src = e.target.result;
-          img.className = 'w-24 h-24 object-cover border rounded';
-          preview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      });
-    });
-
-    analyzeBtn.addEventListener('click', async () => {
-      reportContainer.innerHTML = '';
-      for (const file of selectedFiles) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const reportCard = document.createElement('div');
-        reportCard.className = 'bg-white shadow p-4 rounded';
-        reportCard.innerHTML = `
-          <p class="text-sm text-purple-600 font-medium">${file.name}</p>
-          <p class="text-xs text-gray-500 mb-2">Tamaño: ${(file.size / 1024).toFixed(1)} KB</p>
-          <p class="text-gray-600">Analizando imagen...</p>
-        `;
-        reportContainer.appendChild(reportCard);
-
-        try {
-          const res = await fetch('/api/gemini-report', {
-            method: 'POST',
-            body: formData
-          });
-
-          if (!res.ok) throw new Error('Error en la solicitud');
-
-          const json = await res.json();
-          const raw = json.message || '';
-
-          const [visuales, anomalias, acciones, resumen] = extraerSecciones(raw);
-
-          reportCard.innerHTML = `
-            <h3 class="font-semibold text-purple-700">${file.name}</h3>
-            <div class="text-sm">
-              <p><strong class="text-gray-700">Tamaño:</strong> ${(file.size / 1024).toFixed(1)} KB</p>
-              <p class="text-gray-800 mt-2 whitespace-pre-line">
-                <span class="block text-purple-600 font-bold mb-1">Observaciones Visuales:</span>
-                ${visuales || 'Sin datos.'}
-                <span class="block text-red-600 font-bold mt-3 mb-1">Anomalías Detectadas:</span>
-                ${anomalias || 'Sin datos.'}
-                <span class="block text-blue-600 font-bold mt-3 mb-1">Acciones Tomadas:</span>
-                ${acciones || 'Sin datos.'}
-                <span class="block text-yellow-700 font-bold mt-3 mb-1">Resumen:</span>
-                ${resumen || 'Sin datos.'}
-              </p>
-            </div>
-          `;
-
-        } catch (err) {
-          reportCard.innerHTML += `<p class="text-red-500">Error de conexión con la API.</p>`;
-        }
+    fileInput.addEventListener("change", () => {
+      selectedFile = fileInput.files[0];
+      if (selectedFile) {
+        const imgURL = URL.createObjectURL(selectedFile);
+        preview.innerHTML = `<img src="${imgURL}" class="h-40 rounded border" />`;
+        infoBox.textContent = "Imagen cargada. Lista para enviar.";
       }
     });
 
-    function extraerSecciones(texto) {
-      const secciones = ['Observaciones Visuales', 'Anomalías Detectadas', 'Acciones', 'Resumen'];
-      const resultados = [];
-      for (let i = 0; i < secciones.length; i++) {
-        const inicio = texto.indexOf(`**${secciones[i]}**`);
-        const fin = i + 1 < secciones.length ? texto.indexOf(`**${secciones[i + 1]}**`) : texto.length;
-        if (inicio !== -1) {
-          resultados.push(texto.substring(inicio + secciones[i].length + 4, fin).trim());
+    async function uploadImage() {
+      if (!selectedFile) {
+        infoBox.textContent = "Por favor, selecciona una imagen.";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        const res = await fetch("https://lector-yaye.onrender.com/api/gemini-report", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (data.message) {
+          infoBox.innerHTML = formatReport(data);
         } else {
-          resultados.push('');
+          infoBox.textContent = "Error al generar el informe.";
         }
+      } catch (err) {
+        infoBox.textContent = "¡Error! " + err.message;
       }
-      return resultados;
+    }
+
+    function formatReport(data) {
+      const clean = data.message.replace(/\\n/g, "\n").replace(/\*\*/g, "");
+      return `📄 Archivo: ${data.filename}
+📦 Tamaño: ${data.size_kb} KB
+
+${clean}`;
     }
   </script>
 </body>
